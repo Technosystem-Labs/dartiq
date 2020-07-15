@@ -121,8 +121,8 @@ class Dartiq:
 def add_container_arguments(parser):
     parser.add_argument("--image", action=EnvDefault, envvar="DARTIQ_IMAGE", required=False,
         default=DEFAULT_IMAGE, help="name of the ARTIQ image to use")
-    parser.add_argument("--docker-options", default=None, required=False,
-        help="options passed to Docker run, must be in quotes")
+    parser.add_argument("-o", "--docker-option", action="append", default=[], required=False,
+        help="option passed to Docker run, must be in quotes, may be given multiple times")
     parser.add_argument("-v", "--verbose", action="store_true", default=False, required=False,
         help="be more informative on what is going on")
 
@@ -135,17 +135,18 @@ def add_run_arguments(parser):
     parser.add_argument("--home-path", action=EnvDefault, envvar="DARTIQ_HOME_PATH", required=False, 
         help="path to be used as a in-container user home directory (defaults to Docker volume `dartiq_home`")
     parser.add_argument("-m", "--add-module", metavar="python_modules", action="append", default=[],
-        help="adds Python module under given path")
+        help="adds Python module under given path, may be given multiple times")
     parser.add_argument("-e", "--copy-env-var", action="append", default=[],
-        help="copies environment variable of given name to the containers' environment")
+        help="copies environment variable of given name to the containers' environment, may be given multiple times")
     parser.add_argument("-g", "--add-env-var", action="append", default=[],
-        help="adds environment variables <VARIABLE>=<VALUE> to containers' environment")
+        help="adds environment variables <VARIABLE>=<VALUE> to containers' environment, may be given multiple times")
     parser.add_argument("--xilinx-vivado-path", action=EnvDefault, envvar="XILINX_VIVADO", required=False,
         help="use Xilinx Vivado installed under given path")
     parser.add_argument("--xilinx-ise-path", action=EnvDefault, envvar="XILINX", required=False,
         help="use Xilinx ISE installed under given path")
     parser.add_argument("-c", "--config", required=False,
-        help="Load configuration from a given JSON file. Command-line options surpress configuration file settings.")
+        help="Load configuration from a given JSON file. Command-line options override configuration file settings or expand \
+              them (in case of additional modules, Docker options and environment variables.")
        
 
 def add_subparsers(parser):
@@ -179,7 +180,7 @@ if __name__ == "__main__":
         "xilinx_vivado_path": None,
         "xilinx_ise_path": None,
         "with_usb": True,
-        "docker_options": None,
+        "docker_options": [],
         "python_modules": [],
         "verbose": False,
         "environment": {},
@@ -190,11 +191,16 @@ if __name__ == "__main__":
     if getattr(args, "config", None):
         with open(args.config, 'r') as f:
             config_file = json.load(f)
-    settings.update(config_file)
 
     for key in settings.keys():
-        if hasattr(args, key):
-            if getattr(args, key):
+        if isinstance(settings[key], list):
+
+            settings[key] += getattr(args, key, [])
+            settings[key] += config_file.get(key, [])
+        else:
+            if config_file.get(key, None):
+                settings[key] = config_file[key]
+            if hasattr(args, key):
                 settings[key] = getattr(args, key)
 
     settings["environment"].update({k: os.environ[k] for k in settings.pop("copy_env_var")})

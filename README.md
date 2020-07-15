@@ -35,7 +35,9 @@ It is possible to pass script configuration as a JSON file. This may be useful f
     "xilinx_vivado_path": null,
     "xilinx_ise_path": null,
     "with_usb": true,
-    "docker_options": null,
+    "docker_options": [
+        "--privileged"
+    ],
     "python_modules": [
         "modules/artiq",
         "modules/misoc"
@@ -49,6 +51,8 @@ It is possible to pass script configuration as a JSON file. This may be useful f
     ]
 }
 ```
+
+Command-line options override configuration file settings or expand them in case of additional modules, Docker options and environment variables. 
 
 ## Image Building
 
