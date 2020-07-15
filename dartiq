@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import sys
+import subprocess
+
+
+DEFAULT_IMAGE = "technosystem/dartiq:latest"
+
+
+# https://stackoverflow.com/a/10551190
+class EnvDefault(argparse.Action):
+    def __init__(self, envvar, required=True, default=None, help=None, **kwargs):
+        if not default and envvar:
+            if envvar in os.environ:
+                default = os.environ[envvar]
+        if required and default:
+            required = False
+        help = f"{help} (env. variable: {envvar}" if help else f"(env. variable: {envvar})"
+        super(EnvDefault, self).__init__(default=default, required=required, help=help,
+                                         **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values)
+
+
+class Dartiq:
+
+    def __init__(self, 
+                 image=DEFAULT_IMAGE, 
+                 workspace_dir="./",
+                 xilinx_vivado_path=None,
+                 xilinx_ise_path=None,
+                 with_usb=True,
+                 docker_options=None,
+                 python_modules=[],
+                 verbose=False):
+        self.image = image
+        self.environment = {}
+        self.volumes = []
+        self.entrypoint = "nix-shell"
+        self.entrypoint_options = []
+        self.verbose = verbose
+        self.artiq_src_set = False
+
+        for m in python_modules:
+            self.add_python_module(m)
+
+        self.docker_options = [
+            "--tty",
+            "--rm",
+            "-i",
+            "-t",
+            "--network=host"]
+        
+        if workspace_dir:
+            workspace_dir_abs = os.path.abspath(workspace_dir)
+            self.volumes.append(f"{workspace_dir_abs}:/workspace")
+        self.docker_options.append("--workdir /workspace")
+
+        self.volumes.append(f"dartiq_home:/home/nixuser")
+        
+        if xilinx_vivado_path:
+            self.volumes.append(f"{xilinx_vivado_path}:{xilinx_vivado_path}")
+            self.volumes.append(f"{xilinx_vivado_path}:/opt/Xilinx/Vivado")
+            # self.entrypoint_options.append(f"-I vivadoPath={xilinx_vivado_path}")
+        if xilinx_ise_path:
+            self.volumes.append({xilinx_ise_path: xilinx_ise_path})
+            # TODO: Would be nice to source settings64.sh after console is set up, maybe can be implemented similarly to Vivado
+
+        if with_usb:
+            self.volumes.append("/dev/bus/usb:/dev/bus/usb")
+            self.docker_options.append("--privileged")
+        
+    def add_python_module(self, module_path):
+        module_path_norm = os.path.normpath(module_path)
+        module_path, module_name = os.path.split(module_path_norm)
+        self.volumes.append(f"{module_path_norm}:/modules/{module_name}")
+        python_path = self.environment.get("PYTHONPATH", [])
+        python_path.append(f"/modules/{module_name}")
+        self.environment["PYTHONPATH"] = ":".join(python_path)
+    
+    def _prepare_run(self):
+        self.entrypoint_options.append("-I artiqSrc=/src/artiq")
+        self.entrypoint_options.append("/src/nix-scripts/artiq-fast/shell-dev.nix")
+    
+    def _run_docker(self, stdin, stdout, stderr):
+        command = ["docker", "run", *self.docker_options]
+        command += [f"--env {var_name}={var_value}" for var_name, var_value in self.environment.items()]
+        command += [f"-v {vol}" for vol in self.volumes]
+        command += [self.image]
+        final_command = []
+        for x in command:
+            final_command += x.split()
+        final_command.append(" ".join([self.entrypoint, *self.entrypoint_options]))
+
+        if self.verbose:
+            print(" ".join(final_command))
+
+        subprocess.run(final_command, stderr=stderr, stdin=stdin, stdout=stdout)
+
+    def run_development_shell(self):
+        self._prepare_run()
+        self._run_docker(stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr)
+            
+    def run_command(self, command, stdin=sys.stderr, stdout=sys.stdout, stderr=sys.stderr):
+        self._prepare_run()
+        self.entrypoint_options.append("--run")
+        self.entrypoint_options.append(f"\"{command}\"")
+        self._run_docker(stdin=stdin, stdout=stdout, stderr=stderr)
+
+
+def add_container_arguments(parser):
+    parser.add_argument("--image", action=EnvDefault, envvar="DARTIQ_IMAGE", required=False,
+        default=DEFAULT_IMAGE, help="name of the ARTIQ image to use")
+    parser.add_argument("--docker-options", default=None, required=False,
+        help="options passed to Docker run, must be in quotes")
+    parser.add_argument("-v", "--verbose", action="store_true", default=False, required=False,
+        help="be more informative on what is going on")
+
+
+def add_run_arguments(parser):
+    parser.add_argument("--without-usb", action="store_true", 
+        default=False, help="do not add USB support to the container")
+    parser.add_argument("--workspace", action=EnvDefault, envvar="DARTIQ_WORKSPACE", required=False, 
+        default="./", help="path to be used as a in-container user home directory (defaults to Docker volume `dartiq_home`")
+    parser.add_argument("--home-path", action=EnvDefault, envvar="DARTIQ_HOME_PATH", required=False, 
+        help="path to be used as a in-container user home directory (defaults to Docker volume `dartiq_home`")
+    parser.add_argument("-m", "--add-module", action="append", default=[],
+        help="adds Python module under given path")
+    parser.add_argument("--xilinx-vivado-path", action=EnvDefault, envvar="XILINX_VIVADO", required=False,
+        help="use Xilinx Vivado installed under given path")
+    parser.add_argument("--xilinx-ise-path", action=EnvDefault, envvar="XILINX", required=False,
+        help="use Xilinx ISE installed under given path")
+    
+   
+
+def add_subparsers(parser):
+    subparsers = parser.add_subparsers(title="commands", dest="action")
+
+    # Development shell
+    dev_shell_parser = subparsers.add_parser("shell", help="open development shell")
+    add_container_arguments(dev_shell_parser)
+    add_run_arguments(dev_shell_parser)
+
+    # Running command
+    command_parser = subparsers.add_parser("run", help="run specified command in the conatiner")
+    add_container_arguments(command_parser)
+    add_run_arguments(command_parser)
+    command_parser.add_argument("command", nargs='+', help="command with arguments to be exected in the container")
+    
+    # Extract ARTIQ sources
+    extractor_parser = subparsers.add_parser("extract_artiq", help="extract ARTIQ sources from the container")
+    add_container_arguments(extractor_parser)
+    extractor_parser.add_argument("--output-dir", required=False, default="./artiq", help="output directory, defaults to `artiq`")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    add_subparsers(parser)
+    args = parser.parse_args()
+
+    dartiq = Dartiq(
+        image=getattr(args, "image", DEFAULT_IMAGE),
+        workspace_dir=getattr(args, "workspace", "./"),
+        xilinx_vivado_path=getattr(args, "xilinx_vivado_path", None),
+        xilinx_ise_path=getattr(args, "xilinx_ise_path", None),
+        with_usb=not getattr(args, "without_usb", False),
+        docker_options=getattr(args, "docker_options", None),
+        python_modules=getattr(args, "add_module", []),
+        verbose=getattr(args, "verbose", False))
+    
+    if args.action == "shell":
+        dartiq.run_development_shell()
+    elif args.action == "run":
+        dartiq.run_command(" ".join(args.command))
+    elif args.action == "extract_artiq":
+        output_dir_abs = os.path.abspath(args.output_dir)
+        if not os.path.isdir(output_dir_abs):
+            os.mkdir(output_dir_abs)
+        dartiq.volumes.append(f"{output_dir_abs}:/output")
+        dartiq.run_command("cp -a /src/* /output/ && exit")
+    else:
+        parser.print_help()
+
+
+

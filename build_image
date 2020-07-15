@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd src
+docker build -t technosystem/dartiq:$(date +%Y.%m.%d_%H%M%S) -t technosystem/dartiq:latest .

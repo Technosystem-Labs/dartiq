@@ -1,0 +1,27 @@
+diff --git a/artiq-fast/shell-dev.nix b/artiq-fast/shell-dev.nix
+index 7fd0519..2be528b 100644
+--- a/artiq-fast/shell-dev.nix
++++ b/artiq-fast/shell-dev.nix
+@@ -1,8 +1,8 @@
+-{ pkgs ? import <nixpkgs> {}}:
++{ pkgs ? import <nixpkgs> {}, vivadoPath ? "/opt/Xilinx/Vivado/2020.1"}:
+ 
+ let
+   artiqpkgs = import ./default.nix { inherit pkgs; };
+-  vivado = import ./vivado.nix { inherit pkgs; };
++  vivado = import ./vivado.nix { inherit pkgs; inherit vivadoPath; };
+ in
+   pkgs.mkShell {
+     buildInputs = [
+diff --git a/artiq-fast/vivado.nix b/artiq-fast/vivado.nix
+index 91db382..64aed92 100644
+--- a/artiq-fast/vivado.nix
++++ b/artiq-fast/vivado.nix
+@@ -19,6 +19,6 @@ pkgs.buildFHSUserEnv {
+       xorg.libXi
+     ]
+   );
+-  profile = "source ${vivadoPath}/settings64.sh";
++  profile = "source /opt/Xilinx/Vivado/settings64.sh";
+   runScript = "vivado";
+ }
