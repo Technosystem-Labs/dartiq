@@ -36,9 +36,11 @@ class Dartiq:
                  with_usb=True,
                  docker_options=None,
                  python_modules=[],
-                 verbose=False):
+                 verbose=False,
+                 environment={}):
         self.image = image
         self.environment = {
+            **environment,
             "PYTHONPATH": "./"
         }
         self.volumes = []
@@ -134,14 +136,17 @@ def add_run_arguments(parser):
         help="path to be used as a in-container user home directory (defaults to Docker volume `dartiq_home`")
     parser.add_argument("-m", "--add-module", metavar="python_modules", action="append", default=[],
         help="adds Python module under given path")
+    parser.add_argument("-e", "--copy-env-var", action="append", default=[],
+        help="copies environment variable of given name to the containers' environment")
+    parser.add_argument("-g", "--add-env-var", action="append", default=[],
+        help="adds environment variables <VARIABLE>=<VALUE> to containers' environment")
     parser.add_argument("--xilinx-vivado-path", action=EnvDefault, envvar="XILINX_VIVADO", required=False,
         help="use Xilinx Vivado installed under given path")
     parser.add_argument("--xilinx-ise-path", action=EnvDefault, envvar="XILINX", required=False,
         help="use Xilinx ISE installed under given path")
     parser.add_argument("-c", "--config", required=False,
         help="Load configuration from a given JSON file. Command-line options surpress configuration file settings.")
-    
-   
+       
 
 def add_subparsers(parser):
     subparsers = parser.add_subparsers(title="commands", dest="action")
@@ -176,7 +181,10 @@ if __name__ == "__main__":
         "with_usb": True,
         "docker_options": None,
         "python_modules": [],
-        "verbose": False
+        "verbose": False,
+        "environment": {},
+        "copy_env_var": [],
+        "add_env_var": []
     }
     config_file = {}
     if getattr(args, "config", None):
@@ -186,7 +194,11 @@ if __name__ == "__main__":
 
     for key in settings.keys():
         if hasattr(args, key):
-            settings[key] = getattr(args, key)
+            if getattr(args, key):
+                settings[key] = getattr(args, key)
+
+    settings["environment"].update({k: os.environ[k] for k in settings.pop("copy_env_var")})
+    settings["environment"].update({k:v for k, v in [x.split("=") for x in settings.pop("add_env_var")]})
 
     dartiq = Dartiq(**settings)
     

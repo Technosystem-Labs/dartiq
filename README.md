@@ -14,7 +14,7 @@ You can also run single command in Docker container by adding `run` option, e.g.
 
 If you source Xilinx Vivado `settings64.sh` prior to running `dartiq` a path under which Vivado is installed will be mounted in the container and your Vivado installation will be ready to use. 
 
-*Add license server support*
+You can pass a path to licencing information using either `--copy-env-var XILINXD_LICENSE_FILE` option which copies given variable to container environment or by adding new variable with `--add-env-var XILINXD_LICENSE_FILE=<...>`. 
 
 ## External Python Modules
 
@@ -40,7 +40,13 @@ It is possible to pass script configuration as a JSON file. This may be useful f
         "modules/artiq",
         "modules/misoc"
     ],
-    "verbose": false
+    "verbose": false,
+    "copy_env_var": [
+        "XILINXD_LICENSE_FILE"
+    ],
+    "add_env_var": [
+        "FOO=BAR"
+    ]
 }
 ```
 
