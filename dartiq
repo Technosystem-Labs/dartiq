@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import subprocess
+import json
 
 
 DEFAULT_IMAGE = "technosystem/dartiq:latest"
@@ -29,7 +30,7 @@ class Dartiq:
 
     def __init__(self, 
                  image=DEFAULT_IMAGE, 
-                 workspace_dir="./",
+                 workspace="./",
                  xilinx_vivado_path=None,
                  xilinx_ise_path=None,
                  with_usb=True,
@@ -37,7 +38,9 @@ class Dartiq:
                  python_modules=[],
                  verbose=False):
         self.image = image
-        self.environment = {}
+        self.environment = {
+            "PYTHONPATH": "./"
+        }
         self.volumes = []
         self.entrypoint = "nix-shell"
         self.entrypoint_options = []
@@ -54,9 +57,9 @@ class Dartiq:
             "-t",
             "--network=host"]
         
-        if workspace_dir:
-            workspace_dir_abs = os.path.abspath(workspace_dir)
-            self.volumes.append(f"{workspace_dir_abs}:/workspace")
+        if workspace:
+            workspace_abs = os.path.abspath(workspace)
+            self.volumes.append(f"{workspace_abs}:/workspace")
         self.docker_options.append("--workdir /workspace")
 
         self.volumes.append(f"dartiq_home:/home/nixuser")
@@ -74,10 +77,12 @@ class Dartiq:
             self.docker_options.append("--privileged")
         
     def add_python_module(self, module_path):
-        module_path_norm = os.path.normpath(module_path)
+        module_path_norm = os.path.abspath(os.path.normpath(module_path))
         module_path, module_name = os.path.split(module_path_norm)
         self.volumes.append(f"{module_path_norm}:/modules/{module_name}")
         python_path = self.environment.get("PYTHONPATH", [])
+        if python_path:
+            python_path = python_path.split(":")
         python_path.append(f"/modules/{module_name}")
         self.environment["PYTHONPATH"] = ":".join(python_path)
     
@@ -127,12 +132,14 @@ def add_run_arguments(parser):
         default="./", help="path to be used as a in-container user home directory (defaults to Docker volume `dartiq_home`")
     parser.add_argument("--home-path", action=EnvDefault, envvar="DARTIQ_HOME_PATH", required=False, 
         help="path to be used as a in-container user home directory (defaults to Docker volume `dartiq_home`")
-    parser.add_argument("-m", "--add-module", action="append", default=[],
+    parser.add_argument("-m", "--add-module", metavar="python_modules", action="append", default=[],
         help="adds Python module under given path")
     parser.add_argument("--xilinx-vivado-path", action=EnvDefault, envvar="XILINX_VIVADO", required=False,
         help="use Xilinx Vivado installed under given path")
     parser.add_argument("--xilinx-ise-path", action=EnvDefault, envvar="XILINX", required=False,
         help="use Xilinx ISE installed under given path")
+    parser.add_argument("-c", "--config", required=False,
+        help="Load configuration from a given JSON file. Command-line options surpress configuration file settings.")
     
    
 
@@ -161,15 +168,27 @@ if __name__ == "__main__":
     add_subparsers(parser)
     args = parser.parse_args()
 
-    dartiq = Dartiq(
-        image=getattr(args, "image", DEFAULT_IMAGE),
-        workspace_dir=getattr(args, "workspace", "./"),
-        xilinx_vivado_path=getattr(args, "xilinx_vivado_path", None),
-        xilinx_ise_path=getattr(args, "xilinx_ise_path", None),
-        with_usb=not getattr(args, "without_usb", False),
-        docker_options=getattr(args, "docker_options", None),
-        python_modules=getattr(args, "add_module", []),
-        verbose=getattr(args, "verbose", False))
+    settings = {
+        "image": DEFAULT_IMAGE,
+        "workspace": "./",
+        "xilinx_vivado_path": None,
+        "xilinx_ise_path": None,
+        "with_usb": True,
+        "docker_options": None,
+        "python_modules": [],
+        "verbose": False
+    }
+    config_file = {}
+    if getattr(args, "config", None):
+        with open(args.config, 'r') as f:
+            config_file = json.load(f)
+    settings.update(config_file)
+
+    for key in settings.keys():
+        if hasattr(args, key):
+            settings[key] = getattr(args, key)
+
+    dartiq = Dartiq(**settings)
     
     if args.action == "shell":
         dartiq.run_development_shell()

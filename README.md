@@ -24,6 +24,26 @@ It may happen that you want to add some Python module to be used inside the cont
 
 You may want to refer to the sources embedded within the image. They can be extracted using `extract_artiq` command. Refer to the command help for more options.
 
+## Configuration file
+
+It is possible to pass script configuration as a JSON file. This may be useful for defining per-project configurations. Configuration file path can be given by `--config` argument. Example configuration file contents with all respected parameters:
+
+```json
+{
+    "image": "technosystem/dartiq:latest",
+    "worksapce": "./",
+    "xilinx_vivado_path": null,
+    "xilinx_ise_path": null,
+    "with_usb": true,
+    "docker_options": null,
+    "python_modules": [
+        "modules/artiq",
+        "modules/misoc"
+    ],
+    "verbose": false
+}
+```
+
 ## Image Building
 
 Image tag should follow the following pattern: `technosystem/dartiq:<year>.<month>.<day>_<hour><minute><second>`. However, `dartiq` script refers to `technosystem/dartiq:latest`.
@@ -31,7 +51,7 @@ To generate image locally use: `build_image` script.
 
 ## Examples of Use
 
-```
+```bash
 # Display help message
 dartiq --help
 
