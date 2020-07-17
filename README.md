@@ -59,6 +59,20 @@ Command-line options override configuration file settings or expand them in case
 Image tag should follow the following pattern: `technosystem/dartiq:<year>.<month>.<day>_<hour><minute><second>`. However, `dartiq` script refers to `technosystem/dartiq:latest`.
 To generate image locally use: `build_image` script.
 
+## Device access from withing the container
+
+To program ARTIQ gateware to the onboard flash memory a device access is required. By default container starts with USB support and in *privileged* mode. However, because in the container you act as a normal user (uid:1000), appropriate udev rules are required. Beware that fact that you can access devices without sudo on your host system may not be enought for them to be accessible for the user in the container. That user is not a member of additional groups that may be available on your host (e.g. `plugdev`). 
+
+To give unconstrained access to devices most commonly used with ARTIQ you can create file `/etc/udev/rules.d/99-dartiq.rules` (tested on Ubuntu 18.04 host) with the following contents:
+
+```
+# FT232H Single HS USB-UART FIFO IC, aka Digilent HS-3 JTAG
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="666"
+
+# FT4232H Quad HS USB-UART/FIFO IC, found on Kasli, Sayma, Metlino
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", MODE="666"
+```
+
 ## Examples of Use
 
 ```bash
