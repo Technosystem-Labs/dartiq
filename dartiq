@@ -42,8 +42,8 @@ class Dartiq:
         self.image = image
         self.environment = {
             **environment,
-            "PYTHONPATH": "./"
         }
+        self.python_path = ["/workspace"]
         self.volumes = []
         self.entrypoint = "nix-shell"
         self.entrypoint_options = []
@@ -87,17 +87,14 @@ class Dartiq:
         module_path_norm = os.path.abspath(os.path.normpath(module_path))
         module_path, module_name = os.path.split(module_path_norm)
         self.volumes.append(f"{module_path_norm}:/modules/{module_name}")
-        python_path = self.environment.get("PYTHONPATH", [])
-        if python_path:
-            python_path = python_path.split(":")
-        python_path.append(f"/modules/{module_name}")
-        self.environment["PYTHONPATH"] = ":".join(python_path)
+        self.python_path.append(f"/modules/{module_name}")
     
     def _prepare_run(self):
         self.entrypoint_options.append("-I artiqSrc=/src/artiq")
         self.entrypoint_options.append("/src/nix-scripts/artiq-fast/shell-dev.nix")
     
     def _run_docker(self, stdin, stdout, stderr):
+        self.environment["PYTHONPATH"] = ":".join(self.python_path)
         command = ["docker", "run", *self.docker_options]
         command += [f"--env {var_name}={var_value}" for var_name, var_value in self.environment.items()]
         command += [f"-v {vol}" for vol in self.volumes]
