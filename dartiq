@@ -34,6 +34,7 @@ class Dartiq:
                  xilinx_vivado_path=None,
                  xilinx_ise_path=None,
                  with_usb=True,
+                 with_x=True,
                  docker_options=None,
                  python_modules=[],
                  verbose=False,
@@ -67,8 +68,8 @@ class Dartiq:
         self.volumes.append(f"dartiq_home:/home/nixuser")
         
         if xilinx_vivado_path:
-            self.volumes.append(f"{xilinx_vivado_path}:{xilinx_vivado_path}")
-            self.volumes.append(f"{xilinx_vivado_path}:/opt/Xilinx/Vivado")
+            self.volumes.append(f"{xilinx_vivado_path}:{xilinx_vivado_path}:ro")
+            #self.volumes.append(f"{xilinx_vivado_path}:/opt/Xilinx/Vivado")
             # self.entrypoint_options.append(f"-I vivadoPath={xilinx_vivado_path}")
         if xilinx_ise_path:
             self.volumes.append({xilinx_ise_path: xilinx_ise_path})
@@ -77,6 +78,10 @@ class Dartiq:
         if with_usb:
             self.volumes.append("/dev/bus/usb:/dev/bus/usb")
             self.docker_options.append("--privileged")
+        
+        if with_x:
+            self.environment["DISPLAY"] = os.environ["DISPLAY"]
+            self.volumes.append("/tmp/.X11-unix:/tmp/.X11-unix")
         
     def add_python_module(self, module_path):
         module_path_norm = os.path.abspath(os.path.normpath(module_path))
@@ -130,6 +135,8 @@ def add_container_arguments(parser):
 def add_run_arguments(parser):
     parser.add_argument("--without-usb", action="store_true", 
         default=False, help="do not add USB support to the container")
+    parser.add_argument("--without-x", action="store_true", 
+        default=False, help="do not enable X apps in the container")
     parser.add_argument("--workspace", action=EnvDefault, envvar="DARTIQ_WORKSPACE", required=False, 
         default="./", help="path to be used as a in-container user home directory (defaults to Docker volume `dartiq_home`")
     parser.add_argument("--home-path", action=EnvDefault, envvar="DARTIQ_HOME_PATH", required=False, 
@@ -180,6 +187,7 @@ if __name__ == "__main__":
         "xilinx_vivado_path": None,
         "xilinx_ise_path": None,
         "with_usb": True,
+        "with_x": True,
         "docker_options": [],
         "python_modules": [],
         "verbose": False,
