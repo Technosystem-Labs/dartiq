@@ -69,10 +69,10 @@ class Dartiq:
         
         if xilinx_vivado_path:
             self.volumes.append(f"{xilinx_vivado_path}:{xilinx_vivado_path}:ro")
-            #self.volumes.append(f"{xilinx_vivado_path}:/opt/Xilinx/Vivado")
+            self.volumes.append(f"{xilinx_vivado_path}/settings64.sh:/opt/Xilinx/Vivado/settings64.sh")
             # self.entrypoint_options.append(f"-I vivadoPath={xilinx_vivado_path}")
         if xilinx_ise_path:
-            self.volumes.append({xilinx_ise_path: xilinx_ise_path})
+            self.volumes.append(f"{xilinx_ise_path}:{xilinx_ise_path}:ro")
             # TODO: Would be nice to source settings64.sh after console is set up, maybe can be implemented similarly to Vivado
 
         if with_usb:
@@ -146,7 +146,7 @@ def add_run_arguments(parser):
         help="adds environment variables <VARIABLE>=<VALUE> to containers' environment, may be given multiple times")
     parser.add_argument("--xilinx-vivado-path", action=EnvDefault, envvar="XILINX_VIVADO", required=False,
         help="use Xilinx Vivado installed under given path")
-    parser.add_argument("--xilinx-ise-path", action=EnvDefault, envvar="XILINX", required=False,
+    parser.add_argument("--xilinx-ise-path", action=EnvDefault, envvar="XILINX_ISE", required=False,
         help="use Xilinx ISE installed under given path")
     parser.add_argument("-c", "--config", required=False,
         help="Load configuration from a given JSON file. Command-line options override configuration file settings or expand \

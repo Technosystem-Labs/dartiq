@@ -60,14 +60,14 @@ RUN git clone ${ARTIQ_REPO} /src/artiq \
     && git checkout ${ARTIQ_REV} \
     && git submodule update --init
 
-ADD nix-scripts-vivado.patch /src/nix-scripts-vivado.patch
+ADD nix-scripts.patch /src/nix-scripts.patch
 
 RUN git clone ${NIX_SCRIPTS_REPO} /src/nix-scripts \
     && cd /src/nix-scripts \
     && git checkout ${NIX_SCRIPTS_REV} \
     && git submodule update --init \
     # Apply nix-scripts vivadoPath patch
-    && git apply /src/nix-scripts-vivado.patch
+    && git apply /src/nix-scripts.patch
 
 RUN nix-shell -I artiqSrc=/src/artiq /src/nix-scripts/artiq-fast/shell-dev.nix --run exit
 

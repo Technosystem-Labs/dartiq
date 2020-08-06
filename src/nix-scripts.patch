@@ -1,0 +1,33 @@
+diff --git a/artiq-fast/shell-dev.nix b/artiq-fast/shell-dev.nix
+index 7fd0519..6d08189 100644
+--- a/artiq-fast/shell-dev.nix
++++ b/artiq-fast/shell-dev.nix
+@@ -1,12 +1,14 @@
+-{ pkgs ? import <nixpkgs> {}}:
++{ pkgs ? import <nixpkgs> {}, vivadoPath ? "/opt/Xilinx/Vivado/2020.1"}:
+ 
+ let
+   artiqpkgs = import ./default.nix { inherit pkgs; };
+-  vivado = import ./vivado.nix { inherit pkgs; };
++  vivado = import ./vivado.nix { inherit pkgs; inherit vivadoPath; };
++  ise = import ../gluelogic/ise.nix { inherit pkgs; };
+ in
+   pkgs.mkShell {
+     buildInputs = [
+       vivado
++      (builtins.attrValues ise)
+       pkgs.gnumake
+       (pkgs.python3.withPackages(ps: (with ps; [ jinja2 numpy paramiko ]) ++ (with artiqpkgs; [ migen microscope misoc jesd204b migen-axi artiq ])))
+       artiqpkgs.cargo
+diff --git a/artiq-fast/vivado.nix b/artiq-fast/vivado.nix
+index 91db382..64aed92 100644
+--- a/artiq-fast/vivado.nix
++++ b/artiq-fast/vivado.nix
+@@ -19,6 +19,6 @@ pkgs.buildFHSUserEnv {
+       xorg.libXi
+     ]
+   );
+-  profile = "source ${vivadoPath}/settings64.sh";
++  profile = "source /opt/Xilinx/Vivado/settings64.sh";
+   runScript = "vivado";
+ }
