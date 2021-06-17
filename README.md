@@ -11,7 +11,7 @@ user-friendly.
 
 ## Installing
 
-DARTIQ scirpt is available on PyPI:
+DARTIQ script is available on PyPI:
 
 ```bash
 python3 -m pip install dartiq
@@ -21,7 +21,7 @@ python3 -m pip install dartiq
 
 For example, to get a shell with ARTIQ installed just type `dartiq shell`. 
 This will drop you in the shell with your current working directory mounted as 
-`/workspace` directory in the container. It can be overriden using `--workspace`
+`/workspace` directory in the container. It can be overridden using `--workspace`
 option.
 
 ## Running single command
@@ -30,12 +30,12 @@ You can run a single command in Docker container by using `run` option,
 e.g. `dartiq run "artiq_run ./experiment.py"`. Please note that your command 
 must be taken into quotes!
 
-By default, inside the container, you'll act as user of `uid` and `gid` of your 
+By default, inside the container, you'll act as a user of `uid` and `gid` of your 
 own. It should prevent you from having permission problems. If you need to use 
 different `uid` and `gid`, use `--user-group` option.
 
 **CAUTION:** To be able to access USB devices inside the container, 
-`/dev/bus/usb` is mounted and container is run in **privileged** mode 
+`/dev/bus/usb` is mounted and the container is run in **privileged** mode 
 (You were warned!). This can be disabled by adding `--without-usb` option.
 
 
@@ -61,7 +61,7 @@ of your interest. You can do it with `--add-module <MODULE PATH>` option.
 This will mount your module in `/modules` directory and add appropriate entry 
 in the `PYTHONPATH`.
 
-**CAUTION:** If you want to use ARTIQ as additional module, it is advised to use
+**CAUTION:** If you want to use ARTIQ as an additional module, it is advised to use
 commit used to build DARTIQ image as a base commit to avoid dependency problems.
 You can always check ARTIQ commit used to build an image with `dartiq version`
 command.
@@ -84,7 +84,7 @@ and add `BAR_A=/mountpoints/bar.a` to the execution environment.
 ## Obtaining information on ARTIQ version
 
 `dartiq version` can be used to get information on the source commit of DARTIQ
-image, included ARTIQ commit and revision of Nix Scripts repository used to 
+image: included ARTIQ commit and revision of Nix Scripts repository used to 
 build DARTIQ image.
 
 ## Configuration file
@@ -99,7 +99,7 @@ Example configuration file contents with all supported parameters:
 ```json
 {
     "image": "technosystem/dartiq:latest",
-    "worksapce": "./",
+    "workspace": "./",
     "xilinx_vivado_path": null,
     "xilinx_ise_path": null,
     "with_usb": true,
@@ -123,9 +123,9 @@ Example configuration file contents with all supported parameters:
 Command-line options override configuration file settings or expand them in case
 of additional modules, Docker options and environment variables.
 
-## Device access from withing the container
+## Device access from within the container
 
-By default container starts with USB support and in *privileged* mode. However, 
+By default the container starts with USB support and in *privileged* mode. However, 
 because in the container you act as a normal user (of your current `uid`), 
 appropriate `udev` rules are required. The fact that you can access devices 
 without `sudo` on your host system may not be enough for them to be accessible 
