@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "dartiq"
+version = "0.0.0"
+license = "LGPLv3+"
+description = "Tool for running ARTIQ in Docker container."
+authors = ["Mikołaj Sowiński <msowinski@technosystem.com.pl>"]
+repository = "https://github.com/Technosystem-Labs/dartiq"
+readme = "README.md"
+keywords = ["artiq", "docker"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux"
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+[tool.poetry.scripts]
+dartiq = 'dartiq.cli:main'
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"
+dirty = false
+
+[tool.poetry-dynamic-versioning.substitution]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
