@@ -1,3 +1,6 @@
+> [!WARNING]
+> **DARTIQ project is not developed anymore. Please use Nix flakes instead.**
+
 Dockerized ARTIQ
 ===
 
